@@ -38,6 +38,11 @@ TESSDATA_POSSIBLE_PATHS = [
     "/opt/local/share/tessdata",  # OSX MacPorts
 ]
 
+import platform
+if platform.system() == 'Windows':
+    TESSERACT_CMD = 'tesseract.exe'
+    TESSDATA_POSSIBLE_PATHS.append("C:\\Program Files (x86)\\Tesseract-OCR\\tessdata")
+
 TESSDATA_EXTENSION = ".traineddata"
 
 
@@ -240,9 +245,9 @@ def cleanup(filename):
         pass
 
 
-def temp_file(suffix):
+def temp_file(suffix,delete=True):
     ''' Returns a temporary file '''
-    return tempfile.NamedTemporaryFile(prefix='tess_', suffix=suffix)
+    return tempfile.NamedTemporaryFile(prefix='tess_', suffix=suffix,delete=delete)
 
 
 class TesseractError(Exception):
@@ -278,7 +283,8 @@ def image_to_string(image, lang=None, builder=None):
     if builder is None:
         builder = builders.TextBuilder()
 
-    with temp_file(".bmp") as input_file:
+    with temp_file(".bmp",delete=False) as input_file:
+        input_file.close() # we only need a temp name, we will delete it outselves later
         with temp_file('') as output_file:
             output_file_name_base = output_file.name
 
@@ -288,6 +294,7 @@ def image_to_string(image, lang=None, builder=None):
                                          output_file_name_base,
                                          lang=lang,
                                          configs=builder.tesseract_configs)
+        os.unlink(input_file.name)
         if status:
             raise TesseractError(status, errors)
 
